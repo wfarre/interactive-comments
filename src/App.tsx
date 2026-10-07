@@ -1,13 +1,51 @@
+import { useEffect, useState } from "react";
 import CommentList from "./components/CommentList";
 import useFetch from "./hooks/useFetch";
 import type { CommentModelProps } from "./models/CommentModel";
 import type { UserProps } from "./models/UserModel";
+import CommentForm from "./components/CommentForm";
+import { useSelector } from "@tanstack/react-store";
+import store from "./store/store";
 
 function App() {
   const { data, loading, error } = useFetch<{
     comments: CommentModelProps[];
-    user: UserProps;
+    currentUser: UserProps;
   }>("/data.json");
+
+  const currentUser = useSelector(store, (s) => s.currentUser);
+
+  // Seed the store once the fetched data arrives
+  useEffect(() => {
+    if (!data) return;
+    store.actions.setComments(data.comments ?? []);
+    store.actions.setCurrentUser(data.currentUser ?? null);
+  }, [data]);
+
+  const [newPost, setNewPost] = useState("");
+  const handerSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!currentUser || !newPost.trim()) return;
+    // The store assigns the id
+    store.actions.addComment({
+      content: newPost,
+      createdAt: "Just now",
+      score: 0,
+      user: currentUser,
+      replies: [],
+    });
+    // data?.comments.push({
+
+    // data?.comments.push({
+    //   id: data.comments.length + 1,
+    //   content: newPost,
+    //   createdAt: "Just now",
+    //   score: 0,
+    //   user: data.currentUser as UserProps,
+    //   replies: [],
+    // });
+    setNewPost("");
+  };
 
   if (loading) {
     return <div>Loading...</div>;
@@ -24,21 +62,15 @@ function App() {
   return (
     <div className="bg-grey-50 min-h-screen">
       <section className="flex flex-col justify-center gap-4 max-w-182.5 mx-auto pt-15">
-        <CommentList initialComments={data.comments ?? []} />
+        <CommentList />
       </section>
-      <section className="flex items-start justify-center gap-4 max-w-182.5 mx-auto bg-white p-6 rounded-lg">
-        <img
-          className="w-8 h-8 rounded-full"
-          src={data.user?.image.png}
-          alt={data.user?.username}
+      <section className="">
+        <CommentForm
+          onSubmit={handerSubmit}
+          currentUser={currentUser}
+          postContent={newPost}
+          setPostContent={setNewPost}
         />
-        <textarea
-          className="w-full p-4 rounded-lg border border-grey-200 focus:outline-none focus:ring-2 focus:ring-purple-600"
-          placeholder="Add a comment..."
-        ></textarea>
-        <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
-          Send
-        </button>
       </section>
     </div>
   );

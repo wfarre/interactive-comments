@@ -1,35 +1,61 @@
-import CommentFactory from "../factories/CommentFactory";
-import type CommentModel from "../models/CommentModel";
+import { useState } from "react";
 import type { CommentModelProps } from "../models/CommentModel";
 import CommentCard from "./CommentCard";
+import CommentForm from "./CommentForm";
+import { useSelector } from "@tanstack/react-store";
+import store from "../store/store";
 
-type Props = {
-  initialComments: CommentModelProps[];
-};
+const CommentList = () => {
+  const [showReplyFormFor, setShowReplyFormFor] = useState<number | null>(null);
+  const comments = useSelector(store, (s) => s.comments);
+  const currentUser = useSelector(store, (s) => s.currentUser);
+  const [replyContent, setReplyContent] = useState("");
+  const handleReply = (commentId: number) => {
+    setShowReplyFormFor(commentId);
+  };
 
-const CommentList = (props: Props) => {
-  // Lazy initializer: runs once on mount, no effect needed
-  // const [comments] = useState<CommentModel[]>(() =>
-  //   initialComments.map(
-  //     (comment) =>
-  //       new CommentFactory(comment, "json") as unknown as CommentModel,
-  //   ),
-  // );
-
-  const comments = props.initialComments.map(
-    (comment) => new CommentFactory(comment, "json") as unknown as CommentModel,
-  );
+  const handleReplySubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // Handle the reply submission logic here
+    if (showReplyFormFor === null || !currentUser || !replyContent.trim())
+      return;
+    const parent = comments.find(
+      (comment: CommentModelProps) => comment.id === showReplyFormFor,
+    );
+    // The store assigns the id
+    store.actions.addReply(showReplyFormFor, {
+      content: replyContent,
+      createdAt: "Just now",
+      score: 0,
+      replyingTo: parent?.user.username,
+      user: currentUser,
+      replies: [],
+    });
+    setReplyContent("");
+    setShowReplyFormFor(null); // Close the reply form after submission
+  };
 
   return (
-    <ul className="flex flex-col gap-4 w-full">
+    <ul className="flex flex-col gap-4 mb-4">
       {comments.map((comment) => (
         <li key={comment.id}>
-          <CommentCard comment={comment} />
-          {comment.replies.length > 0 && (
-            <div className="flex gap-4 w-full mt-4 m-9">
+          <CommentCard
+            comment={comment}
+            onReply={() => handleReply(comment.id)}
+          />
+          {showReplyFormFor === comment.id && (
+            <CommentForm
+              onSubmit={handleReplySubmit}
+              currentUser={currentUser}
+              postContent={replyContent}
+              setPostContent={setReplyContent}
+            />
+          )}
+          {(comment.replies?.length ?? 0) > 0 && (
+            <div className="flex gap-4 ml-9 mt-4">
               <div className="border-l-2 border-grey-100 min-h-full"></div>
-              <ul className="flex flex-col gap-4 w-full pl-8 ">
-                {comment.replies.map((reply) => (
+              <ul className="flex flex-col gap-4 pl-8 w-full ">
+                {(comment.replies ?? []).map((reply) => (
                   <li key={reply.id}>
                     <CommentCard comment={reply} />
                   </li>

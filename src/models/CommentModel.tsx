@@ -58,6 +58,7 @@ export type CommentModelProps = {
     };
     username: string;
   };
+  replyingTo?: string;
   replies?: CommentModelProps[];
 };
 
